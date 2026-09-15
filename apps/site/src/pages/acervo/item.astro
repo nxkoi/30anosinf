@@ -1,0 +1,38 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Item do acervo — 30 anos do INF/UFG">
+  <section class="section">
+    <div class="container" style="max-width:800px">
+      <p><a href="/acervo">← Voltar ao acervo</a></p>
+      <div id="detail"><p>Carregando…</p></div>
+    </div>
+  </section>
+</BaseLayout>
+<script>
+  const API = import.meta.env.PUBLIC_API_BASE || '/api';
+  const id = new URLSearchParams(location.search).get('id');
+  const root = document.getElementById('detail');
+  if (!id) {
+    root.innerHTML = `<div class="empty"><h3>Item não informado</h3></div>`;
+  } else {
+    fetch(`${API}/public/assets/${id}`).then(async (r) => {
+      if (!r.ok) throw new Error('missing');
+      return r.json();
+    }).then(item => {
+      document.title = `${item.public_code} — Acervo 30 anos INF`;
+      root.innerHTML = `
+        <img src="${item.media_url}" alt="Fotografia ${item.public_code}" style="width:100%;border-radius:12px;border:1px solid var(--inf-border)" />
+        <h1 style="margin-top:1rem">${item.public_code}</h1>
+        <p class="card__meta">${item.photo_date_text || 'Data não informada'}${item.date_precision ? ' (' + item.date_precision + ')' : ''}</p>
+        ${item.location ? `<p><strong>Local:</strong> ${item.location}</p>` : ''}
+        ${item.people ? `<p><strong>Pessoas:</strong> ${item.people}</p>` : ''}
+        ${item.author_name ? `<p><strong>Autoria:</strong> ${item.author_name}</p>` : ''}
+        ${item.relationship ? `<p><strong>Vínculo:</strong> ${item.relationship}</p>` : ''}
+        ${item.story ? `<p style="margin-top:1rem">${item.story}</p>` : ''}
+      `;
+    }).catch(() => {
+      root.innerHTML = `<div class="empty"><h3>Item não encontrado</h3><p>Este conteúdo não está publicado ou o endereço é inválido.</p></div>`;
+    });
+  }
+</script>

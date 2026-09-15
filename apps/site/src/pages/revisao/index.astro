@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Revisão — 30 anos do INF/UFG">
+  <section class="section">
+    <div class="container">
+      <h1>Área de revisão</h1>
+      <p class="section__lead">Protegida por autenticação HTTP Basic no Caddy. A API também exige as mesmas credenciais.</p>
+
+      <div class="milestone" style="margin-bottom:1rem">
+        <p class="hint">Credenciais da API de revisão (iguais ao Basic Auth do Caddy):</p>
+        <label>Usuário <input id="api-user" autocomplete="username" /></label>
+        <label>Senha <input id="api-pass" type="password" autocomplete="current-password" /></label>
+        <button class="btn btn--primary" type="button" id="save-auth">Salvar na sessão</button>
+      </div>
+
+      <label style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;font-weight:600">
+        Filtrar estado
+        <select id="status-filter">
+          <option value="">Todos</option>
+          <option>RECEIVED</option>
+          <option>QUEUED</option>
+          <option>PROCESSING</option>
+          <option selected>READY_FOR_REVIEW</option>
+          <option>CHANGES_REQUESTED</option>
+          <option>APPROVED</option>
+          <option>REJECTED</option>
+          <option>PUBLISHED</option>
+          <option>ERROR</option>
+        </select>
+      </label>
+      <div id="list-error" class="alert alert--error" hidden></div>
+      <div style="overflow-x:auto">
+        <table class="table" id="subs-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Remetente</th>
+              <th>Estado</th>
+              <th>Autorização</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+<script>
+  const API = import.meta.env.PUBLIC_API_BASE || '/api';
+  const tbody = document.querySelector('#subs-table tbody');
+  const err = document.getElementById('list-error');
+  const filter = document.getElementById('status-filter');
+
+  function authHeader() {
+    const raw = sessionStorage.getItem('reviewAuth');
+    return raw ? { Authorization: `Basic ${raw}` } : {};
+  }
+
+  document.getElementById('save-auth').onclick = () => {
+    const u = document.getElementById('api-user').value;
+    const p = document.getElementById('api-pass').value;
+    sessionStorage.setItem('reviewAuth', btoa(`${u}:${p}`));
+    load();
+  };
+
+  async function load() {
+    err.hidden = true;
+    const status = filter.value;
+    const url = status ? `${API}/review/submissions?status=${encodeURIComponent(status)}` : `${API}/review/submissions`;
+    try {
+      const res = await fetch(url, { headers: authHeader() });
+      if (res.status === 401) throw new Error('Não autenticado. Informe usuário/senha acima.');
+      if (!res.ok) throw new Error('Falha ao listar submissões.');
+      const rows = await res.json();
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.public_code}</td>
+          <td>${r.sender_name}<br><span class="card__meta">${r.sender_email}</span></td>
+          <td><span class="badge">${r.status}</span></td>
+          <td>${r.publication_authorized ? 'Sim' : 'Não'}</td>
+          <td><a href="/revisao/detalhe/?id=${r.id}">Abrir</a></td>
+        </tr>`).join('') || `<tr><td colspan="5">Nenhuma submissão neste filtro.</td></tr>`;
+    } catch (e) {
+      err.hidden = false;
+      err.textContent = e.message;
+    }
+  }
+  filter.addEventListener('change', load);
+  if (sessionStorage.getItem('reviewAuth')) load();
+</script>

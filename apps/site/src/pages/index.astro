@@ -1,0 +1,108 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { FALLBACK_MILESTONES } from '../lib/api';
+---
+<BaseLayout title="30 anos do INF/UFG">
+  <section class="hero">
+    <div class="container hero__grid">
+      <div>
+        <p style="color:var(--inf-violet);font-weight:700;margin:0 0 .5rem;">Instituto de Informática · UFG</p>
+        <h1>30 anos construindo o futuro da Computação em Goiás</h1>
+        <p>
+          Este site temporário reúne a memória da comunidade do INF.
+          Fotografias e relatos enviados passam por revisão humana antes de qualquer publicação.
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="/historia">Conheça a história</a>
+          <a class="btn btn--ghost" style="background:white;color:var(--inf-navy);border-color:var(--inf-border);" href="/contribuir">Envie uma foto</a>
+        </div>
+      </div>
+      <div>
+        <img class="selo" src="/brand/selo-branco.png" alt="Selo comemorativo dos 30 anos do INF" width="251" height="241" />
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Marcos essenciais</h2>
+      <p class="section__lead">Síntese a partir da página oficial comemorativa do INF. Cada item aponta sua fonte.</p>
+      <div class="milestones" id="milestones">
+        {FALLBACK_MILESTONES.map((m) => (
+          <article class="milestone">
+            <div class="milestone__year">{m.year}</div>
+            <h3>{m.title}</h3>
+            <p>{m.summary}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Acervo em destaque</h2>
+      <p class="section__lead">Somente contribuições com estado PUBLISHED aparecem aqui.</p>
+      <div id="destaques" class="gallery" aria-live="polite"></div>
+      <div id="destaques-empty" class="empty" hidden>
+        <img src="/brand/selo-outline.png" alt="" width="80" height="77" style="margin:0 auto 1rem;opacity:.7" />
+        <h3>Ainda não há fotografias publicadas</h3>
+        <p>Quando a curadoria aprovar e publicar contribuições, elas aparecerão neste espaço.</p>
+        <p><a class="btn btn--primary" href="/contribuir">Contribua com uma memória</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="cta">
+        <h2>Compartilhe sua memória</h2>
+        <p>Estudantes, egressos, técnicos e docentes podem enviar fotografias e relatos. Tudo passa por revisão.</p>
+        <a class="btn" style="background:white;color:var(--inf-violet);" href="/contribuir">Envie sua história</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const API = import.meta.env.PUBLIC_API_BASE || '/api';
+  async function load() {
+    const box = document.getElementById('destaques');
+    const empty = document.getElementById('destaques-empty');
+    try {
+      const res = await fetch(`${API}/public/assets`);
+      if (!res.ok) throw new Error('api');
+      const items = await res.json();
+      if (!items.length) {
+        empty.hidden = false;
+        return;
+      }
+      empty.hidden = true;
+      box.innerHTML = items.slice(0, 6).map((item) => `
+        <a class="card" href="/acervo/item/?id=${item.id}">
+          <img src="${item.media_url}" alt="Fotografia do acervo ${item.public_code}" loading="lazy" width="480" height="360" />
+          <div class="card__body">
+            <div class="card__meta">${item.photo_date_text || 'Data não informada'}${item.location ? ' · ' + item.location : ''}</div>
+            <strong>${item.public_code}</strong>
+          </div>
+        </a>`).join('');
+    } catch {
+      empty.hidden = false;
+    }
+
+    try {
+      const res = await fetch(`${API}/public/timeline`);
+      if (!res.ok) return;
+      const milestones = await res.json();
+      if (!milestones.length) return;
+      const root = document.getElementById('milestones');
+      root.innerHTML = milestones.map((m) => `
+        <article class="milestone">
+          <div class="milestone__year">${m.year}</div>
+          <h3>${m.title}</h3>
+          <p>${m.summary}</p>
+        </article>`).join('');
+    } catch {}
+  }
+  load();
+</script>

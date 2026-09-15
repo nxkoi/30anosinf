@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { FALLBACK_MILESTONES } from '../lib/api';
+---
+<BaseLayout title="Nossa história — 30 anos do INF/UFG">
+  <section class="section">
+    <div class="container" style="max-width:760px">
+      <h1>Nossa história</h1>
+      <p class="section__lead">
+        Texto baseado na página oficial
+        <a href="https://inf.ufg.br/p/62264-instituto-de-informatica-da-ufg-celebra-30-anos-de-historia-e-inovacao" rel="noopener noreferrer">
+          Instituto de Informática da UFG celebra 30 anos de história e inovação
+        </a>.
+        Inferências não são apresentadas como fatos.
+      </p>
+
+      <article>
+        <p>
+          Em 2026, o Instituto de Informática (INF) da Universidade Federal de Goiás (UFG) celebra
+          30 anos de sua criação como unidade acadêmica.
+        </p>
+        <p>
+          A história tem início em 1975, com a criação do Departamento de Estatística e Informática (DEI)
+          no então Instituto de Matemática e Física (IMF).
+        </p>
+        <p>
+          Em 1983 foi criado o Curso de Bacharelado em Ciências da Computação, cuja primeira turma
+          ingressou em 1984. O curso foi reconhecido pelo Ministério da Educação em 1988.
+        </p>
+        <p>
+          Em 1996, o DEI deu origem ao Instituto de Informática, tornando-se unidade acadêmica autônoma da UFG.
+        </p>
+      </article>
+
+      <h2 style="margin-top:2rem">Linha do tempo</h2>
+      <div class="milestones" style="margin-top:1rem">
+        {FALLBACK_MILESTONES.map((m) => (
+          <article class="milestone">
+            <div class="milestone__year">{m.year}</div>
+            <h3>{m.title}</h3>
+            <p>{m.summary}</p>
+            {m.source_label && <p class="hint">Fonte: {m.source_label}</p>}
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

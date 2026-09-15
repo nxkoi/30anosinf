@@ -1,0 +1,155 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Contribuir — 30 anos do INF/UFG" description="Envie fotografias e relatos para o acervo comemorativo. Tudo passa por revisão.">
+  <section class="section">
+    <div class="container">
+      <h1>Envie sua história</h1>
+      <p class="section__lead">
+        Sua contribuição será revisada pela equipe antes de qualquer publicação.
+        As imagens <strong>não</strong> ficam públicas imediatamente após o envio.
+        <!-- CAPTCHA: ponto de extensão futuro — integrar verificação no submit antes de POST /api/submissions -->
+      </p>
+
+      <form class="form" id="contrib-form" novalidate>
+        <label>Nome *
+          <input name="sender_name" required minlength="2" maxlength="200" autocomplete="name" />
+        </label>
+        <label>E-mail *
+          <input name="sender_email" type="email" required maxlength="320" autocomplete="email" />
+        </label>
+        <label>Relação com o INF *
+          <select name="relationship" required>
+            <option value="">Selecione…</option>
+            <option>Estudante</option>
+            <option>Egresso(a)</option>
+            <option>Docente</option>
+            <option>Técnico(a) administrativo(a)</option>
+            <option>Comunidade / visitante</option>
+            <option>Outro</option>
+          </select>
+        </label>
+        <label>Data ou período da fotografia
+          <input name="photo_date_text" maxlength="200" placeholder="Ex.: 1998 ou década de 2000" />
+        </label>
+        <label>Precisão da data
+          <select name="date_precision">
+            <option value="">Não sei</option>
+            <option>dia</option>
+            <option>mês</option>
+            <option>ano</option>
+            <option>década</option>
+            <option>aproximada</option>
+          </select>
+        </label>
+        <label>Local
+          <input name="location" maxlength="300" />
+        </label>
+        <label>Pessoas presentes
+          <textarea name="people" maxlength="4000"></textarea>
+        </label>
+        <label>História ou lembrança
+          <textarea name="story" maxlength="8000"></textarea>
+        </label>
+        <label>Autoria da fotografia
+          <input name="author_name" maxlength="200" />
+        </label>
+        <label>Imagens (JPEG, PNG ou WebP, até 20&nbsp;MB cada) *
+          <input name="files" type="file" accept="image/jpeg,image/png,image/webp" multiple required />
+          <span class="hint">Máximo 10 arquivos. Não envie ZIP nesta versão.</span>
+        </label>
+        <label class="checkbox">
+          <input name="publication_authorized" type="checkbox" />
+          <span>Autorizo a publicação desta contribuição no site comemorativo, após revisão.</span>
+        </label>
+        <label class="checkbox">
+          <input name="terms_accepted" type="checkbox" required />
+          <span>Li e aceito que o material será analisado e só será publicado se aprovado. *</span>
+        </label>
+
+        <div id="form-error" class="alert alert--error" hidden></div>
+        <div id="form-ok" class="alert alert--ok" hidden></div>
+
+        <button class="btn btn--primary" type="submit" id="submit-btn">Enviar contribuição</button>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+<script>
+  const API = import.meta.env.PUBLIC_API_BASE || '/api';
+  const form = document.getElementById('contrib-form');
+  const err = document.getElementById('form-error');
+  const ok = document.getElementById('form-ok');
+  const btn = document.getElementById('submit-btn');
+
+  function showError(msg) {
+    err.hidden = false;
+    ok.hidden = true;
+    err.textContent = msg;
+  }
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    err.hidden = true;
+    ok.hidden = true;
+    const fd = new FormData(form);
+    const files = form.querySelector('input[name=files]').files;
+    if (!files.length) return showError('Selecione ao menos uma imagem.');
+    if (files.length > 10) return showError('Máximo de 10 imagens por envio.');
+    if (!form.terms_accepted.checked) return showError('Aceite os termos para continuar.');
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    try {
+      // Extensão futura: validar CAPTCHA aqui antes de criar a submissão.
+      const payload = {
+        sender_name: fd.get('sender_name'),
+        sender_email: fd.get('sender_email'),
+        relationship: fd.get('relationship'),
+        photo_date_text: fd.get('photo_date_text') || null,
+        date_precision: fd.get('date_precision') || null,
+        location: fd.get('location') || null,
+        people: fd.get('people') || null,
+        story: fd.get('story') || null,
+        author_name: fd.get('author_name') || null,
+        publication_authorized: form.publication_authorized.checked,
+        terms_accepted: form.terms_accepted.checked,
+      };
+      const created = await fetch(`${API}/submissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!created.ok) {
+        const data = await created.json().catch(() => ({}));
+        throw new Error(data.detail?.[0]?.msg || data.detail || 'Falha ao criar submissão.');
+      }
+      const sub = await created.json();
+
+      for (const file of files) {
+        const body = new FormData();
+        body.append('file', file);
+        const up = await fetch(`${API}/submissions/${sub.id}/files`, { method: 'POST', body });
+        if (!up.ok) {
+          const data = await up.json().catch(() => ({}));
+          throw new Error(data.detail || `Falha no upload de ${file.name}`);
+        }
+      }
+
+      const done = await fetch(`${API}/submissions/${sub.id}/complete`, { method: 'POST' });
+      if (!done.ok) {
+        const data = await done.json().catch(() => ({}));
+        throw new Error(data.detail || 'Falha ao finalizar envio.');
+      }
+
+      form.reset();
+      ok.hidden = false;
+      ok.innerHTML = `Recebemos sua contribuição. Código: <strong>${sub.public_code}</strong>. Ela será revisada antes de qualquer publicação.`;
+    } catch (e) {
+      showError(e.message || 'Erro inesperado.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar contribuição';
+    }
+  });
+</script>

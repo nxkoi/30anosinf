@@ -1,0 +1,48 @@
+{
+	email off
+	auto_https off
+}
+
+(security_headers) {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+}
+
+# VM temporária / desenvolvimento: responde em qualquer Host na porta 80.
+# Produção futura (após DNS/TLS):
+# 30anos.inf.ufg.br { import security_headers ... }
+# revisao.30anos.inf.ufg.br { basicauth ... }
+
+:80 {
+	import security_headers
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /revisao* {
+		basicauth {
+			{$REVIEW_USERNAME} {$REVIEW_PASSWORD_HASH}
+		}
+		root * /srv/site
+		try_files {path} {path}/ /revisao/index.html /index.html
+		file_server
+	}
+
+	handle {
+		root * /srv/site
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+
+	encode gzip
+	log {
+		output stdout
+		format console
+	}
+}

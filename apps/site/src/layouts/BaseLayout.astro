@@ -1,0 +1,65 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const { title = '30 anos do INF/UFG', description = 'Acervo comemorativo dos 30 anos do Instituto de Informática da UFG.' } = Astro.props;
+---
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="sr-only" href="#conteudo">Ir para o conteúdo</a>
+    <div class="header-wrap">
+      <header class="site-header">
+        <div class="container site-header__inner">
+          <a class="brand-link" href="/" aria-label="30 anos do Instituto de Informática da UFG">
+            <img src="/brand/logo-horizontal-branco.png" alt="Marca comemorativa 30 anos INF/UFG" width="200" height="71" />
+          </a>
+          <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-principal" id="menu-btn">Menu</button>
+          <nav class="nav" id="menu-principal" aria-label="Principal">
+            <a href="/">Início</a>
+            <a href="/historia">Nossa história</a>
+            <a href="/acervo">Acervo</a>
+            <a class="btn btn--primary" href="/contribuir">Envie sua história</a>
+          </nav>
+        </div>
+      </header>
+    </div>
+    <main id="conteudo">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="container footer__inner">
+        <div>
+          <p><strong>Instituto de Informática — UFG</strong></p>
+          <p>Site temporário comemorativo dos 30 anos. Conteúdos enviados passam por revisão antes da publicação.</p>
+          <p><a href="https://inf.ufg.br/" rel="noopener noreferrer">Portal oficial do INF</a></p>
+        </div>
+        <div class="footer-brands" aria-label="Marcas institucionais">
+          <img src="/brand/logo-inf.png" alt="Marca do INF" width="80" height="74" />
+          <img src="/brand/logo-ufg-white.svg" alt="Marca da UFG" width="120" height="36" />
+        </div>
+      </div>
+    </footer>
+    <script>
+      const btn = document.getElementById('menu-btn');
+      const nav = document.getElementById('menu-principal');
+      btn?.addEventListener('click', () => {
+        const open = nav?.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Acervo — 30 anos do INF/UFG">
+  <section class="section">
+    <div class="container">
+      <h1>Acervo</h1>
+      <p class="section__lead">Fotografias e relatos publicados após revisão. Itens não aprovados não aparecem aqui.</p>
+      <div id="gallery" class="gallery" aria-live="polite"></div>
+      <div id="empty" class="empty">
+        <img src="/brand/selo-outline.png" alt="" width="80" height="77" style="margin:0 auto 1rem;opacity:.7" />
+        <h3>Acervo ainda em formação</h3>
+        <p>Não há itens publicados no momento. Sua contribuição pode ajudar a construir esta memória.</p>
+        <a class="btn btn--primary" href="/contribuir">Enviar contribuição</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+<script>
+  const API = import.meta.env.PUBLIC_API_BASE || '/api';
+  const gallery = document.getElementById('gallery');
+  const empty = document.getElementById('empty');
+  fetch(`${API}/public/assets`).then(r => r.json()).then(items => {
+    if (!items.length) return;
+    empty.hidden = true;
+    gallery.innerHTML = items.map(item => `
+      <a class="card" href="/acervo/item/?id=${item.id}">
+        <img src="${item.media_url}" alt="Item ${item.public_code}" loading="lazy" width="480" height="360" />
+        <div class="card__body">
+          <div class="card__meta">${item.photo_date_text || 'Data não informada'}</div>
+          <strong>${item.location || item.public_code}</strong>
+        </div>
+      </a>`).join('');
+  }).catch(() => {});
+</script>

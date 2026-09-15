@@ -1,0 +1,120 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Detalhe da revisão — 30 anos do INF/UFG">
+  <section class="section">
+    <div class="container" style="max-width:900px">
+      <p><a href="/revisao">← Voltar</a></p>
+      <div id="auth-box" class="milestone" style="margin-bottom:1rem">
+        <p class="hint">Informe as mesmas credenciais da área de revisão para autorizar chamadas à API.</p>
+        <label>Usuário <input id="api-user" autocomplete="username" /></label>
+        <label>Senha <input id="api-pass" type="password" autocomplete="current-password" /></label>
+        <button class="btn btn--primary" type="button" id="save-auth">Usar credenciais</button>
+      </div>
+      <div id="detail"><p>Carregando…</p></div>
+    </div>
+  </section>
+</BaseLayout>
+<script>
+  const API = import.meta.env.PUBLIC_API_BASE || '/api';
+  const id = new URLSearchParams(location.search).get('id');
+  const root = document.getElementById('detail');
+
+  function authHeader() {
+    const raw = sessionStorage.getItem('reviewAuth');
+    return raw ? { Authorization: `Basic ${raw}` } : {};
+  }
+
+  function esc(s) {
+    return (s || '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  document.getElementById('save-auth').onclick = () => {
+    const u = document.getElementById('api-user').value;
+    const p = document.getElementById('api-pass').value;
+    sessionStorage.setItem('reviewAuth', btoa(`${u}:${p}`));
+    load();
+  };
+
+  async function action(path, confirmMsg) {
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    const notes = document.getElementById('notes').value;
+    const res = await fetch(`${API}/review/submissions/${id}/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      body: JSON.stringify({ notes: notes || null }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(typeof data.detail === 'string' ? data.detail : 'Falha na ação');
+      return;
+    }
+    location.reload();
+  }
+
+  async function load() {
+    if (!id) {
+      root.innerHTML = `<div class="alert alert--error">ID ausente.</div>`;
+      return;
+    }
+    const res = await fetch(`${API}/review/submissions/${id}`, { headers: authHeader() });
+    if (res.status === 401) {
+      root.innerHTML = `<div class="alert alert--error">Autentique-se acima para carregar os detalhes.</div>`;
+      return;
+    }
+    if (!res.ok) {
+      root.innerHTML = `<div class="alert alert--error">Não foi possível carregar a submissão.</div>`;
+      return;
+    }
+    const s = await res.json();
+    const thumbs = (s.assets || []).map(a => a.has_thumbnail
+      ? `<img src="${API}/review/assets/${a.id}/thumbnail" alt="${esc(a.original_filename)}" data-auth="1" />`
+      : `<span class="badge">${esc(a.original_filename)}</span>`).join('');
+    const analyses = (s.analyses || []).map(a => `
+      <div class="milestone">
+        <strong>${esc(a.provider)} / ${esc(a.model)}</strong>
+        <p>${esc(a.description)}</p>
+      </div>`).join('') || '<p class="hint">Sem análise ainda.</p>';
+
+    root.innerHTML = `
+      <h1>${esc(s.public_code)}</h1>
+      <p><span class="badge">${esc(s.status)}</span>
+         Autorização de publicação: <strong>${s.publication_authorized ? 'sim' : 'não'}</strong></p>
+      <p><strong>Remetente:</strong> ${esc(s.sender_name)} &lt;${esc(s.sender_email)}&gt;<br>
+         <strong>Vínculo:</strong> ${esc(s.relationship)}<br>
+         <strong>Data:</strong> ${esc(s.photo_date_text || '—')} (${esc(s.date_precision || '—')})<br>
+         <strong>Local:</strong> ${esc(s.location || '—')}<br>
+         <strong>Pessoas:</strong> ${esc(s.people || '—')}<br>
+         <strong>Autoria:</strong> ${esc(s.author_name || '—')}</p>
+      <p>${esc(s.story || '')}</p>
+      <h2>Miniaturas</h2>
+      <div class="thumb-row" id="thumbs">${thumbs}</div>
+      <h2>Análise</h2>
+      ${analyses}
+      <label style="display:grid;gap:.35rem;margin-top:1.2rem;font-weight:600">Observações
+        <textarea id="notes" rows="3"></textarea>
+      </label>
+      <div class="review-actions">
+        <button class="btn btn--primary" id="btn-approve" type="button">Aprovar</button>
+        <button class="btn" style="background:#e8ebf0" id="btn-changes" type="button">Solicitar ajustes</button>
+        <button class="btn btn--danger" id="btn-reject" type="button">Rejeitar</button>
+        <button class="btn btn--primary" id="btn-publish" type="button">Publicar</button>
+      </div>
+      <p class="hint">Aprovar e publicar são ações separadas. Publicar exige autorização do remetente e estado APPROVED.</p>
+    `;
+    document.getElementById('btn-approve').onclick = () => action('approve');
+    document.getElementById('btn-changes').onclick = () => action('request-changes');
+    document.getElementById('btn-reject').onclick = () => action('reject', 'Confirma rejeitar esta submissão?');
+    document.getElementById('btn-publish').onclick = () => action('publish', 'Confirma publicar no acervo público?');
+
+    // Reload thumbnails with auth via blob (img tags can't send Authorization)
+    for (const img of document.querySelectorAll('#thumbs img[data-auth]')) {
+      const src = img.getAttribute('src');
+      fetch(src, { headers: authHeader() }).then(r => r.blob()).then(b => {
+        img.src = URL.createObjectURL(b);
+      }).catch(() => {});
+    }
+  }
+  if (sessionStorage.getItem('reviewAuth')) load();
+  else root.innerHTML = `<p class="hint">Salve as credenciais para carregar o item.</p>`;
+</script>
